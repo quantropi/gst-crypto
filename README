@@ -8,8 +8,20 @@ Currently, aes-128-cbc and qispace-qeep cipher are supported in this branch.
 qispace-qeep cipher is enabled by Default.
 
 To get qispace-qeep cipher working, you need:
-   - Openssl 3.x 
+   - Openssl 3.2.2 + 
    - Openssl qispace provider from Quantropi Inc.
+   (note: to install openssl 3.2.2 +  
+     On Ubunut 
+         1. download openssl release from https://github.com/openssl/openssl/releases
+         2. ./Configure --prefix=/opt/openssl --openssldir=/usr/local/ssl
+         3. sudo make install
+         4. sudo ldconfig /opt/openssl/lib64  or add it to  /etc/ld.so.conf.d/x86_64-linux-gnu.conf
+           LD_LIBRARY_PATH=/opt/openssl/lib64 /opt/openssl/bin/openssl version -a
+    )
+    - To test if provider working:
+       `/opt/openssl/bin/openssl list  -provider qispace_provider -cipher-algorithms`
+        Should see "qeep @ qispace_provider" at the output
+
 
 To switch cipher back to aes, you can un-comment line 72 at gstcrypto.c 
 
@@ -38,8 +50,8 @@ On MacOS:
 
 On Linux Ubuntu:
   Setup Dev ENV:
-    apt-get install automake autoconf libtool
-    apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+    sudo apt-get install automake autoconf libtool
+    sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
   Build:
       ./autogen.sh    If it is failed with error "no config.status", run the next step ./confingure and then do this again
       ./configure 
@@ -49,3 +61,10 @@ On Linux Ubuntu:
       gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
       gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt.enc1 ! crypto mode=dec pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=output.dec1
   
+
+GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
+
+GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 cipher=qeep key=9ebb50 ! filesink location=plain.txt.enc1
+
+
+GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=1234567890 ! crypto mode=dec pass=1234567890 ! filesink location=plain.txt.dec && cat plain.txt.dec
