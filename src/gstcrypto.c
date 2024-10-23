@@ -491,11 +491,13 @@ DEBUG_LOG("", "gst_crypto_openssl_init")
   filter->evp_cipher = EVP_get_cipherbyname (filter->cipher);
   if (filter->evp_cipher == NULL )
   { //try using new version 
-    filter->evp_cipher = EVP_CIPHER_fetch(libctx, CIPHER, NULL);
+    filter->evp_cipher = EVP_CIPHER_fetch(libctx, filter->cipher, NULL);
+    DEBUG_LOG("EVP_CIPHER_fetch", filter->cipher)
   }
 
   if (!filter->evp_cipher) {
     GST_ERROR_OBJECT (filter, "Could not get cipher by name from openssl");
+    DEBUG_LOG("", "evp_cipher is null")
     return FALSE;
   }
   filter->evp_md = EVP_get_digestbyname ("md5");
@@ -525,6 +527,7 @@ DEBUG_LOG("", "gst_crypto_run")
 // #endif
   if (filter->is_encrypting) {
     GST_LOG_OBJECT (filter, "Encrypting");
+DEBUG_LOG_HEX("Encrypting plaintext_len", filter->plaintext_len)
     if (1 != EVP_EncryptInit_ex (ctx, filter->evp_cipher, NULL, filter->key,
             filter->iv)) {
       GST_ERROR_OBJECT (filter, "Could not initialize openssl encryption");
@@ -539,12 +542,8 @@ DEBUG_LOG("", "gst_crypto_run")
     }
     filter->ciphertext_len = len;
 
-    /* CBC means the last block is the new iv */
-    /* FIXME: Can't libssl handle this transparently? */
-    if (len >= filter->plaintext_len) {
-      memcpy (filter->iv, filter->ciphertext + filter->ciphertext_len - 16, 16);
-      goto crypto_run_out;
-    }
+
+DEBUG_LOG_HEX("Enc ciphertext len", len)
 
     if (1 != EVP_EncryptFinal_ex (ctx, filter->ciphertext + len, &len)) {
       GST_ERROR_OBJECT (filter, "Could not finalize openssl encryption");
@@ -552,9 +551,10 @@ DEBUG_LOG("", "gst_crypto_run")
       goto crypto_run_out;
     }
     filter->ciphertext_len += len;
-DEBUG_LOG_HEX("ciphertext_len", filter->ciphertext_len)
+DEBUG_LOG_HEX("Enc_final ciphertext_len", filter->ciphertext_len)
   } else {
     GST_LOG_OBJECT (filter, "Decrypting");
+DEBUG_LOG_HEX("Decrypting ciphertext_len", filter->ciphertext_len)
     if (1 != EVP_DecryptInit_ex (ctx, filter->evp_cipher, NULL, filter->key,
             filter->iv)) {
       GST_ERROR_OBJECT (filter, "Could not initialize openssl decryption");
@@ -568,24 +568,15 @@ DEBUG_LOG_HEX("ciphertext_len", filter->ciphertext_len)
       goto crypto_run_out;
     }
     filter->plaintext_len = len;
-
-    /* CBC means the last block is the new iv */
-    if (len == filter->ciphertext_len - 16) {
-      guint bytes_read = 16;
-      remove_padding(filter->plaintext, filter->plaintext_len, &bytes_read);
-      memcpy (filter->iv, filter->ciphertext + len, 16);
-      filter->plaintext_len += bytes_read;
-      goto crypto_run_out;
-    }
-
+DEBUG_LOG_HEX("Dec plaintext_len", len)
     if (1 != EVP_DecryptFinal_ex (ctx, filter->plaintext + len, &len)) {
       GST_ERROR_OBJECT (filter, "Could not finalize openssl decryption");
       ret = GST_FLOW_ERROR;
       goto crypto_run_out;
     }
-    remove_padding(filter->plaintext, filter->plaintext_len, &len);
+DEBUG_LOG_HEX("Dec_final plaintext_len", len)
     filter->plaintext_len += len;
-  DEBUG_LOG_HEX("plaintext_len", filter->plaintext_len)
+DEBUG_LOG_HEX("Dec_remove plaintext_len", len)
   }
   GST_LOG_OBJECT (filter, "Crypto run successfull");
 
