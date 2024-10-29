@@ -102,12 +102,13 @@ enum
 };
 
 #define DEBUG
+
 #ifdef DEBUG
   static void debug_log(char* topic, char* msg) {
-    printf("gstCrypto-%s: %s \n",topic, msg);
+    printf("QCrypto-%s: %s \n",topic, msg);
   }
   static void debug_log_hex(char* topic, int v) {
-     printf("gstCrypto-%s: %d (0x%04x) \n",topic, v, v);
+     printf("QCrypto-%s: %d (0x%04x) \n",topic, v, v);
   }
   #define DEBUG_LOG(o,m) debug_log(o,m);
   #define DEBUG_LOG_HEX(o, v) debug_log_hex(o, (int)v);
@@ -275,16 +276,6 @@ gst_crypto_set_property (GObject * object, guint prop_id,
     case PROP_CIPHER:
       filter->cipher = g_value_dup_string (value);
       filter->evp_cipher = NULL; // check cipher at opnessl_init step 
-// #ifdef AES
-//       filter->evp_cipher = EVP_get_cipherbyname (filter->cipher);
-// #else
-//       if (prov == NULL) {
-//         prov = OSSL_PROVIDER_load(libctx, CIPHER);
-//       }
-//       if ( (prov != NULL) && (libctx != NULL) ) {
-//         filter->evp_cipher = EVP_CIPHER_fetch(libctx, CIPHER, NULL);
-//       }
-// #endif
       break;
     case PROP_PASS:
       filter->pass = g_value_dup_string (value);
@@ -292,11 +283,14 @@ gst_crypto_set_property (GObject * object, guint prop_id,
       break;
     case PROP_KEY:
        DEBUG_LOG("key_str", g_value_dup_string (value))
+       DEBUG_LOG_HEX("key_str_len", strlen(g_value_dup_string (value)))
+       filter->key_len = strlen(g_value_dup_string (value))/2;
       if (!gst_crypto_hexstring2number (filter, g_value_dup_string (value),
               (gchar *) filter->key)) {
         /* If hexkey is invalid, set to default */
         gst_crypto_hexstring2number (filter, DEFAULT_KEY,
             (gchar *) filter->key);
+        filter->key_len = 16;
       }
       filter->use_pass = FALSE;
       break;
@@ -431,11 +425,11 @@ gst_crypto_start (GstBaseTransform * base)
   if (filter->use_pass) {
     //pass overwrite cipher option in this case
     //checking post quantum crypto support via pass for AES cipher backward compatibility 
-    //pass with "QISPACE:" prefix, ex pass=QISPACE:QK_Hex_String, use post quantum crypto cipher "qeep" via provider
+    //pass with "QISPACE:" prefix, ex pass=QISPACE:QK:QK_Hex_String, use post quantum crypto cipher "qeep" via provider
     //which is same to use option: cipher=qeep, key="QK_Hex_String"
     //For AES-256 case, use option cipher=AES-256-CBC. any cipher list: openssl list  -cipher-algorithms
     if (strstr(filter->pass, "QISPACE:") != NULL ) {
-      filter->cipher = "qeep";
+        strcpy(filter->cipher,  "qeep");
     }
   }
   if (!gst_crypto_openssl_init (filter)) {
@@ -461,9 +455,6 @@ gst_crypto_stop (GstBaseTransform * base)
 {
   GstCrypto *filter = GST_CRYPTO (base);
 
-  if (prov != NULL) {
-    OSSL_PROVIDER_unload(prov);
-  }
 
   GST_INFO_OBJECT (filter, "Stopping");
   GST_LOG_OBJECT (filter, "Stop successfull");
@@ -475,27 +466,67 @@ gst_crypto_stop (GstBaseTransform * base)
 static gboolean
 gst_crypto_openssl_init (GstCrypto * filter)
 {
-  
+  const char *build = NULL;
+  OSSL_PARAM request[] = {
+      { "buildinfo", OSSL_PARAM_UTF8_PTR, &build, 0, 0 },
+      { NULL, 0, NULL, 0, 0 }
+  };
+
   GST_INFO_OBJECT (filter, "Initializing");
-DEBUG_LOG("", "gst_crypto_openssl_init")
+  DEBUG_LOG("", "gst_crypto_openssl_init")
+
   ERR_load_crypto_strings ();
-  OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
-  // OpenSSL_add_all_algorithms ();
-  // OPENSSL_config (NULL);
-  //load default openssl config here
-  OSSL_LIB_CTX_load_config(libctx, NULL);
-  //if (strcmp(filter->cipher, "qeep") == 0){}
-  if (OSSL_PROVIDER_available(libctx, "qispace_provider"))
-        prov = OSSL_PROVIDER_load(libctx, "qispace_provider");
-  
-  filter->evp_cipher = EVP_get_cipherbyname (filter->cipher);
-  if (filter->evp_cipher == NULL )
-  { //try using new version 
-    filter->evp_cipher = EVP_CIPHER_fetch(libctx, filter->cipher, NULL);
-    DEBUG_LOG("EVP_CIPHER_fetch", filter->cipher)
+  OSSL_LIB_CTX *libctx = NULL;
+
+  libctx = OSSL_LIB_CTX_new();
+  if (libctx == NULL ) {
+    ERR_print_errors_fp(stderr);
+    DEBUG_LOG("libctx", "Fail")
+    return FALSE;
+  }
+  #ifdef OPENSSL_CONF
+  if(OSSL_LIB_CTX_load_config(libctx, OPENSSL_CONF) != 1 )
+  #else
+  if (OSSL_LIB_CTX_load_config(libctx, NULL) != 1 )
+  #endif
+  {
+    ERR_print_errors_fp(stderr);
+    DEBUG_LOG("OSSL_LIB_CTX_load_config", "Fail")
+    return FALSE;
   }
 
-  if (!filter->evp_cipher) {
+    if ((prov = OSSL_PROVIDER_load(libctx, "default")) != NULL
+        && OSSL_PROVIDER_get_params(prov, request)) {
+        DEBUG_LOG("Default provider buildinfo", build)
+        GST_LOG_OBJECT (filter, "Default Openssl Provider successfull");
+        }
+    else
+    {
+        ERR_print_errors_fp(stderr);
+        GST_ERROR_OBJECT (filter,"Default Openssl Provider load fail");
+        return FALSE;
+    }
+
+  if (strcmp(filter->cipher, "qeep") == 0) {
+    if ((prov = OSSL_PROVIDER_load(libctx, "qispace_provider")) != NULL
+        && OSSL_PROVIDER_get_params(prov, request)) {
+        DEBUG_LOG("qispace_provider buildinfo ",  build)
+        GST_LOG_OBJECT (filter, "qispace_provider loaded successfull");
+        }
+    else
+       {ERR_print_errors_fp(stderr); }
+  }
+ 
+
+
+  //filter->evp_cipher = EVP_get_cipherbyname (filter->cipher);
+  if (filter->evp_cipher == NULL )
+  { //try using new version 
+    DEBUG_LOG("EVP_CIPHER_fetch", filter->cipher)
+    filter->evp_cipher = EVP_CIPHER_fetch(libctx, filter->cipher, NULL);
+  }
+
+  if (filter->evp_cipher == NULL) {
     GST_ERROR_OBJECT (filter, "Could not get cipher by name from openssl");
     DEBUG_LOG("", "evp_cipher is null")
     return FALSE;
@@ -507,6 +538,8 @@ DEBUG_LOG("", "gst_crypto_openssl_init")
   }
   filter->salt = NULL;
   GST_LOG_OBJECT (filter, "Initialization successfull");
+  if (libctx != NULL ) 
+     { OSSL_LIB_CTX_free(libctx); }
   return TRUE;
 }
 
@@ -522,8 +555,12 @@ DEBUG_LOG("", "gst_crypto_run")
   if (!(ctx = EVP_CIPHER_CTX_new ()))
     return GST_FLOW_ERROR;
 // #ifndef AES
-//     EVP_CipherInit(ctx, filter->evp_cipher, NULL, NULL, 1);
-//     EVP_CIPHER_CTX_set_key_length(ctx, 54);
+if (strcmp(filter->cipher, "qeep") == 0) {
+    EVP_CipherInit(ctx, filter->evp_cipher, NULL, NULL, 0);
+     printf("key  length %d \n", filter->key_len);
+    EVP_CIPHER_CTX_set_key_length(ctx, filter->key_len);
+   
+}
 // #endif
   if (filter->is_encrypting) {
     GST_LOG_OBJECT (filter, "Encrypting");
@@ -719,6 +756,9 @@ gst_crypto_finalize (GObject * object)
     g_free (filter->key);
   if (filter->iv)
     g_free (filter->iv);
+  if (prov != NULL) {
+    OSSL_PROVIDER_unload(prov);
+  }
   GST_INFO_OBJECT (filter, "Finalization successfull");
 }
 

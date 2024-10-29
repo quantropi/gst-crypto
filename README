@@ -60,11 +60,26 @@ On Linux Ubuntu:
     Raw file enc and dec:
       gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
       gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt.enc1 ! crypto mode=dec pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=output.dec1
-  
-
-GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
-
-GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 cipher=qeep key=9ebb50 ! filesink location=plain.txt.enc1
 
 
-GST_PLUGIN_PATH=./src/.libs/ gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=1234567890 ! crypto mode=dec pass=1234567890 ! filesink location=plain.txt.dec && cat plain.txt.dec
+# Debug and Test with PQC upgraded version powered by Quantropi Inc 
+  - using pass option to use qeep
+      qeep key: quantum safe key,  can be generated vi QiSpace Platform SDK, example can be found (https://github.com/quantropi/qispace-sdk-code-samples/tree/master/c%2B%2B/sequr_util)
+      pass: to enable qeep cipher, the pass format should be with prefix "QISPACE:"
+            ex: "QISPACE:QK: qeep_key"
+
+      'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass="QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a" ! crypto mode=dec pass="QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a" ! filesink location=plain.txt.dec.qeep'
+
+- testing cipher=aes-256-ctr using AES key
+  './demo_sequr_key_gen --qispace_meta qispace_meta_SAMPLE.json --key_size_bits 256 --key_type 0'
+
+  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=aes-256-ctr key=c916c0d3aec7318d74cf13f1d79bd9e3823ad46a073bbda27ee9a6e65dc7c654 iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=aes-256-ctr key=c916c0d3aec7318d74cf13f1d79bd9e3823ad46a073bbda27ee9a6e65dc7c654 iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! filesink location=plain.txt.dec.aes-256-ctr'
+
+- testing cipher=qeep with qeep key (version 2 with length appended)
+  './demo_sequr_key_gen --qispace_meta qispace_meta_SAMPLE.json --key_size_bits 512 --key_type 2'
+
+  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=qeep  'key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a
+ iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! filesink location=plain.txt.dec.qeep'
+
+
+
