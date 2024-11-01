@@ -101,7 +101,7 @@ enum
   PROP_IV,
 };
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
   static void debug_log(char* topic, char* msg) {
