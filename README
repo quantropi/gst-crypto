@@ -78,8 +78,9 @@ On Linux Ubuntu:
 - testing cipher=qeep with qeep key (version 2 with length appended)
   './demo_sequr_key_gen --qispace_meta qispace_meta_SAMPLE.json --key_size_bits 512 --key_type 2'
 
-  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=qeep  'key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a
- iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! filesink location=plain.txt.dec.qeep'
+  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=qeep  key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c ! filesink location=plain.txt.dec.qeep'
+
+    'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c ! filesink location=plain.txt.dec.qeep'
 
 
 
