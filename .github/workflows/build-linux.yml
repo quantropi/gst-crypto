@@ -30,9 +30,9 @@ jobs:
         brew install automake autoconf libtool
         brew install gstreamer
         sudo brew install --cask gstreamer-development
+        which gst-launch-1.0
     - name: configire-build
       run: |
-        which gst-launch-1.0
         ./autogen.sh
         ./configure
     - name: make
