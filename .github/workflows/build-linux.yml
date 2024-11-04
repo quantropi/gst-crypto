@@ -16,7 +16,7 @@ jobs:
     - name: configure
       run: |
         # apt-get install automake autoconf libtool
-        apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+        sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
         ./autogen.sh
         ./configure
     - name: make
