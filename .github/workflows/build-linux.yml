@@ -5,16 +5,26 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
     - name: configure
-      run: ./configure
+      run: |
+        # apt-get install automake autoconf libtool
+        # apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev
+        ./autogen.sh
+        ./configure
     - name: make
       run: make
-
+    - name: Archive build results
+      uses: actions/upload-artifact@v4
+      with:
+        name: gst-crypto-qeep
+        path: |
+          src/.libs
+        retention-days: 1
