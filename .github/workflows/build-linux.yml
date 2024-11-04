@@ -28,9 +28,11 @@ jobs:
       if: contains(matrix.os, 'macos')
       run: |
         brew install automake autoconf libtool
-        brew install --cask gstreamer-development
+        brew install gstreamer
+        sudo brew install --cask gstreamer-development
     - name: configire-build
       run: |
+        which gst-launch-1.0
         ./autogen.sh
         ./configure
     - name: make
