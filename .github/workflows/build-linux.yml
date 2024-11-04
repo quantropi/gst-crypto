@@ -37,6 +37,9 @@ jobs:
         make
         mkdir -p dist
         cp ./src/.libs/* ./dist
+        cd dist
+        openssl version -a >> openssl.info
+        cat openssl.info
 
     - name: Archive build results
       uses: actions/upload-artifact@v4
