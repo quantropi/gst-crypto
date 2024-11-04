@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-13', 'macos-15'] 
+        os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-13', 'macos-15', 'windows-2022'] 
         # , 'windows-2022']
     steps:
     - uses: actions/checkout@v4
@@ -30,19 +30,36 @@ jobs:
         brew install automake autoconf libtool
         brew install gstreamer
         brew install --cask gstreamer-development
-        which gst-launch-1.0
+    - name: setup-windows
+      if: contains(matrix.os, 'windows')
+      run: |
+        curl -L -o gstreamer-dev.msi https://gstreamer.freedesktop.org/data/pkg/windows/1.24.9/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.9.msi
+        Start-Process 'msiexec.exe' -ArgumentList '/I "gstreamer-dev.msi" /qn' -Wait
+        $env:Path = 'C:\gstreamer\1.0\msvc_x86_64\bin;' + $env:Path
     - name: configire-build
       run: |
         ./autogen.sh
         ./configure
     - name: make
       run: | 
+        cd src
         make
+        cd ..
         mkdir -p dist
-        cp ./src/.libs/* ./dist
+        cp ./src/.libs/*.so ./dist
         cd dist
         openssl version -a >> openssl.info
         cat openssl.info
+    - name: publis-dynmaic-library-macos
+      if: contains(matrix.os, 'macos')
+      run: |
+        cd dist
+        mv libgstcrypto.so  libgstcrypto.dylib
+    - name: publis-dynmaic-library-windows
+      if: contains(matrix.os, 'windows')
+      run: |
+        cd dist
+        mv libgstcrypto.so  libgstcrypto.dll
 
     - name: Archive build results
       uses: actions/upload-artifact@v4
