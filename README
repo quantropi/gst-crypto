@@ -2,7 +2,88 @@ RidgeRun's gst-crypto plugin makes it easy to encrypt or decrypt content
 passing through a GStreamer pipeline, it is build directly on top of OpenSSL.
 gst-crypto will take advantage of  any available crypto hardware accelerators. 
 gst-crypto is based on OpenSSL so any encryption technology supported by OpenSSL 
-can be supported by gst-crypto. Currently, only aes-128-cbc cipher is supported. 
+can be supported by gst-crypto. 
+
+Currently, aes-128-cbc and qispace-qeep cipher are supported in this branch.
+qispace-qeep cipher is enabled by Default.
+
+To get qispace-qeep cipher working, you need:
+   - Openssl 3.2.2 + 
+   - Openssl qispace provider from Quantropi Inc.
+   (note: to install openssl 3.2.2 +  
+     On Ubunut 
+         1. download openssl release from https://github.com/openssl/openssl/releases
+         2. ./Configure --prefix=/opt/openssl --openssldir=/usr/local/ssl
+         3. sudo make install
+         4. sudo ldconfig /opt/openssl/lib64  or add it to  /etc/ld.so.conf.d/x86_64-linux-gnu.conf
+           LD_LIBRARY_PATH=/opt/openssl/lib64 /opt/openssl/bin/openssl version -a
+    )
+    - To test if provider working:
+       `/opt/openssl/bin/openssl list  -provider qispace_provider -cipher-algorithms`
+        Should see "qeep @ qispace_provider" at the output
+
+
+To switch cipher back to aes, you can un-comment line 72 at gstcrypto.c 
+
 
 More information on how to use it on:
  http://developer.ridgerun.com/wiki/index.php?title=RidgeRun_gst-crypto_GStreamer_Plugin
+
+
+# build and test
+
+On MacOS:
+  Setup Dev ENV:
+      brew install automake autoconf libtool
+      brew install gstreamer
+      brew install --cask gstreamer-development
+      brew install gst-libav gst-plugins-ugly gst-plugins-base gst-plugins-bad gst-plugins-good
+  Build:
+      ./autogen.sh    If it is failed with error "no config.status", run the next step ./confingure and then do this again
+      ./configure 
+      cd src && make
+  Test gst-crypto:
+    Raw file enc and dec:
+      GST_PLUGIN_PATH=./.libs/ gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
+      GST_PLUGIN_PATH=./.libs/ gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt.enc1 ! crypto mode=dec pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=output.dec1
+    Ref: https://developer.ridgerun.com/wiki/index.php?title=RidgeRun_gst-crypto_GStreamer_Plugin
+
+On Linux Ubuntu:
+  Setup Dev ENV:
+    sudo apt-get install automake autoconf libtool
+    sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+  Build:
+      ./autogen.sh    If it is failed with error "no config.status", run the next step ./confingure and then do this again
+      ./configure 
+      sudo make install
+  Test gst-crypto:
+    Raw file enc and dec:
+      gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt ! crypto mode=enc pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=plain.txt.enc1
+      gst-launch-1.0 --gst-plugin-path=/usr/local/lib/gstreamer-1.0 filesrc location=plain.txt.enc1 ! crypto mode=dec pass=9ebb50f49aeb2f1ec0c6e9fa565e1c3c01e8e86830efc1c6559d315fd635bd7e59eaa5a0a95100c5d0a2431972ee7f8c0869d47df216794ecf49374b40823071e7836c8f2622 ! filesink location=output.dec1
+
+
+# Debug and Test with PQC upgraded version powered by Quantropi Inc 
+  - using pass option to use qeep
+      qeep key: quantum safe key,  can be generated vi QiSpace Platform SDK, example can be found (https://github.com/quantropi/qispace-sdk-code-samples/tree/master/c%2B%2B/sequr_util)
+      pass: to enable qeep cipher, the pass format should be with prefix "QISPACE:"
+            ex: "QISPACE:QK: qeep_key"
+
+      'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass="QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a" ! crypto mode=dec pass="QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a" ! filesink location=plain.txt.dec.qeep'
+
+- testing cipher=aes-256-ctr using AES key
+  './demo_sequr_key_gen --qispace_meta qispace_meta_SAMPLE.json --key_size_bits 256 --key_type 0'
+
+  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=aes-256-ctr key=c916c0d3aec7318d74cf13f1d79bd9e3823ad46a073bbda27ee9a6e65dc7c654 iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=aes-256-ctr key=c916c0d3aec7318d74cf13f1d79bd9e3823ad46a073bbda27ee9a6e65dc7c654 iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! filesink location=plain.txt.dec.aes-256-ctr'
+
+- testing cipher=qeep with qeep key (version 2 with length appended)
+  './demo_sequr_key_gen --qispace_meta qispace_meta_SAMPLE.json --key_size_bits 512 --key_type 2'
+
+  'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=qeep  key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c ! filesink location=plain.txt.dec.qeep'
+
+    'LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc pass=QISPACE:QK:020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c  ! crypto mode=dec cipher=qeep key=020056bf6281797ecfdb7280066a60d9cf94725ebc7543de50a26b797e67315affcdac2a3cb0cdebc4ee2b5a37b47bfbfe1c079afb5e3be3c9872556c1464ba008dd2fa307aa9b468a76d1b368d48cf44b47522e1544bc2a iv=9ebb50f49aeb2f1ec0c6e9fa565e1c3c ! filesink location=plain.txt.dec.qeep'
+
+
+    LD_LIBRARY_PATH=/opt/openssl/lib64 GST_PLUGIN_PATH=./src/.libs/  gst-launch-1.0 filesrc location=plain.txt ! crypto mode=enc cipher=qeep pass=1234567890  ! crypto mode=dec cipher=qeep  pass=1234567890 ! filesink location=plain.txt.dec.qeep
+
+
+

@@ -1,0 +1,45 @@
+name: Build-win
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build - (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['windows-2022']  
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Visual Studio shell
+      uses: egor-tensin/vs-shell@v2
+      with:
+        arch: x64
+    - name: setup-windows
+      run: |
+        curl -L -o gstreamer-dev.msi https://gstreamer.freedesktop.org/data/pkg/windows/1.24.9/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.9.msi
+        Start-Process 'msiexec.exe' -ArgumentList '/I "gstreamer-dev.msi" /qn' -Wait
+        $env:Path = 'C:\gstreamer\1.0\msvc_x86_64\bin;' + $env:Path
+    - name: build-Windows
+      run: |
+        bash -l -c "export PATH=C:\gstreamer\1.0\msvc_x86_64\bin;$PATH && ./autogen.sh && ./configure && cd src && make && cp -r .libs ../dist"
+
+
+    - name: publish-dynmaic-library-windows
+      run: |
+        cd dist
+        mv libgstcrypto.so  libgstcrypto.dll
+
+    - name: Archive build results
+      uses: actions/upload-artifact@v4
+      with:
+        name: gst-Qcrypto-${{ matrix.os }}
+        path: |
+          dist/*
+        retention-days: 1

@@ -79,6 +79,7 @@ struct _GstCrypto
   guchar *iv;
   gboolean is_encrypting;
   gboolean use_pass;
+  gint key_len;
 
   /* Element variables */
   const EVP_CIPHER *evp_cipher;
