@@ -9,28 +9,37 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    name: Build - (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-13', 'macos-15'] 
+        # , 'windows-2022']
     steps:
     - uses: actions/checkout@v4
-    - name: configure
+
+    - name: configure-ubuntu
+      if: contains(matrix.os, 'ubuntu')
       run: |
         sudo apt-get -y update
         sudo apt-get remove libunwind-*
         sudo apt-get -y install --no-install-recommends libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
         ./autogen.sh
         ./configure
+    - name: configure-mac
+      if: contains(matrix.os, 'macos')
+      run: |
+        brew install --cask gstreamer-development
     - name: make
       run: | 
         make
-        ls -l
         mkdir -p dist
-        cp ./src/.libs/*.so ./dist
+        cp ./src/.libs/* ./dist
 
     - name: Archive build results
       uses: actions/upload-artifact@v4
       with:
-        name: gst-crypto-qeep
+        name: gst-Qcrypto-${{ matrix.os }}
         path: |
           dist/*
         retention-days: 1
