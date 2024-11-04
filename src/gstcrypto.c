@@ -198,14 +198,14 @@ DEBUG_LOG("init_pass", DEFAULT_PASS)
      'RidgeRun' */
   g_object_class_install_property (gobject_class, PROP_KEY,
       g_param_spec_string ("key", "Key",
-          "crypto hexkey", (guchar *) DEFAULT_KEY,
+          "crypto hexkey", (gchar *) DEFAULT_KEY,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   /* The default iv is what openssl would generate from the default password
      'RidgeRun' */
   g_object_class_install_property (gobject_class, PROP_IV,
       g_param_spec_string ("iv", "Iv",
-          "crypto initialization vector", (guchar *) DEFAULT_IV,
+          "crypto initialization vector", (gchar *) DEFAULT_IV,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   gst_element_class_set_details_simple (gstelement_class,

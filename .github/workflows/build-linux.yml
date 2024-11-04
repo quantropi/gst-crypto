@@ -1,4 +1,4 @@
-name: Linux
+name: Build
 
 on:
   push:
@@ -21,11 +21,16 @@ jobs:
         ./autogen.sh
         ./configure
     - name: make
-      run: make
+      run: | 
+        make
+        ls -l
+        mkdir -p dist
+        cp ./src/.libs/*.so ./dist
+
     - name: Archive build results
       uses: actions/upload-artifact@v4
       with:
         name: gst-crypto-qeep
         path: |
-          src/.libs
+          dist/*
         retention-days: 1
