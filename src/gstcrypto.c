@@ -462,6 +462,7 @@ static gboolean
 gst_crypto_openssl_init (GstCrypto * filter)
 {
   const char *build = NULL;
+  char *openssl_conf_file = NULL;
   OSSL_PARAM request[] = {
       { "buildinfo", OSSL_PARAM_UTF8_PTR, &build, 0, 0 },
       { NULL, 0, NULL, 0, 0 }
@@ -479,14 +480,11 @@ gst_crypto_openssl_init (GstCrypto * filter)
     DEBUG_LOG("libctx", "Fail")
     return FALSE;
   }
-  #ifdef OPENSSL_CONF
-  if(OSSL_LIB_CTX_load_config(libctx, OPENSSL_CONF) != 1 )
-  #else
-  if (OSSL_LIB_CTX_load_config(libctx, NULL) != 1 )
-  #endif
+  openssl_conf_file = getenv("OPENSSL_CONF");
+  if (OSSL_LIB_CTX_load_config(libctx, openssl_conf_file) != 1 )
   {
     ERR_print_errors_fp(stderr);
-    DEBUG_LOG("OSSL_LIB_CTX_load_config", "Fail")
+    DEBUG_LOG("OSSL_LIB_CTX_load_config fail", openssl_conf_file)
     return FALSE;
   }
 
