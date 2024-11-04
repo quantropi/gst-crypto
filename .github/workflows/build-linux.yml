@@ -27,6 +27,7 @@ jobs:
     - name: setup-mac
       if: contains(matrix.os, 'macos')
       run: |
+        brew install automake autoconf libtool
         brew install --cask gstreamer-development
     - name: configire-build
       run: |
