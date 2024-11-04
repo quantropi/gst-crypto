@@ -1,4 +1,4 @@
-name: Build
+name: Build-linux
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
     strategy:
       matrix:
         os: ['ubuntu-22.04', 'ubuntu-24.04', 'macos-13', 'macos-15']  
-        # , 'windows-2022']
     steps:
     - uses: actions/checkout@v4
 
@@ -32,7 +31,6 @@ jobs:
         brew install --cask gstreamer-development
 
     - name: build-Unix
-      if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
       run: |
         ./autogen.sh
         ./configure
@@ -45,32 +43,11 @@ jobs:
         openssl version -a >> openssl.info
         cat openssl.info
 
-    - name: Set up Visual Studio shell
-      if: contains(matrix.os, 'windows')
-      uses: egor-tensin/vs-shell@v2
-      with:
-        arch: x64
-    - name: setup-windows
-      if: contains(matrix.os, 'windows')
-      run: |
-        curl -L -o gstreamer-dev.msi https://gstreamer.freedesktop.org/data/pkg/windows/1.24.9/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.9.msi
-        Start-Process 'msiexec.exe' -ArgumentList '/I "gstreamer-dev.msi" /qn' -Wait
-        $env:Path = 'C:\gstreamer\1.0\msvc_x86_64\bin;' + $env:Path
-    - name: build-Windows
-      if: contains(matrix.os, 'windows')
-      run: |
-        bash -l -c "export PATH=C:\gstreamer\1.0\msvc_x86_64\bin;$PATH && ./autogen.sh && ./configure && cd src && make && cp -r .libs ../dist"
-
     - name: publish-dynmaic-library-macos
       if: contains(matrix.os, 'macos')
       run: |
         cd dist
         mv libgstcrypto.so  libgstcrypto.dylib
-    - name: publish-dynmaic-library-windows
-      if: contains(matrix.os, 'windows')
-      run: |
-        cd dist
-        mv libgstcrypto.so  libgstcrypto.dll
 
     - name: Archive build results
       uses: actions/upload-artifact@v4
